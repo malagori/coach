@@ -96,30 +96,25 @@ def check_input_and_fill_run_dict(parser):
         num_workers = int(re.match("^\d+$", args.num_workers).group(0))
     except ValueError:
         screen.error("Parameter num_workers should be an integer.")
-        exit(1)
 
     preset_names = list_all_classes_in_module(presets)
     if args.preset is not None and args.preset not in preset_names:
         screen.error("A non-existing preset was selected. ")
-        exit(1)
 
     if args.checkpoint_restore_dir is not None and not os.path.exists(args.checkpoint_restore_dir):
         screen.error("The requested checkpoint folder to load from does not exist. ")
-        exit(1)
 
     if args.save_model_sec is not None:
         try:
             args.save_model_sec = int(args.save_model_sec)
         except ValueError:
             screen.error("Parameter save_model_sec should be an integer.")
-            exit(1)
 
     if args.preset is None and (args.agent_type is None or args.environment_type is None
                                        or args.exploration_policy_type is None):
         screen.error('When no preset is given for Coach to run, the user is expected to input the desired agent_type,'
                      ' environment_type and exploration_policy_type to assemble a preset. '
                      '\nAt least one of these parameters was not given.')
-        exit(1)
 
     experiment_name = args.experiment_name
 
@@ -132,9 +127,13 @@ def check_input_and_fill_run_dict(parser):
     if match is None:
         screen.error('Experiment name must be composed only of alphanumeric letters and underscores and should not be '
                      'longer than 100 characters.')
-        exit(1)
     experiment_path = os.path.join('./experiments/',  match.group(0))
     experiment_path = get_experiment_path(experiment_path)
+
+    if args.play and num_workers > 1:
+        screen.warning("Playing the game as a human is only available with a single worker. "
+                       "The number of workers will be reduced to 1")
+        num_workers = 1
 
     # fill run_dict
     run_dict = dict()
@@ -145,6 +144,7 @@ def check_input_and_fill_run_dict(parser):
     run_dict['custom_parameter'] = args.custom_parameter
     run_dict['experiment_path'] = experiment_path
     run_dict['framework'] = Frameworks().get(args.framework)
+    run_dict['play'] = args.play
 
     # multi-threading parameters
     run_dict['num_threads'] = num_workers
@@ -197,6 +197,10 @@ if __name__ == "__main__":
                         help="(int) Number of workers for multi-process based agents, e.g. A3C",
                         default='1',
                         type=str)
+    parser.add_argument('--play',
+                        help="(flag) Play as a human by controlling the game with the keyboard. "
+                             "This option will save a replay buffer with the game play.",
+                        action='store_true')
     parser.add_argument('-v', '--verbose',
                         help="(flag) Don't suppress TensorFlow debug prints.",
                         action='store_true')

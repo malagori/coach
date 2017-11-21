@@ -78,8 +78,10 @@ class ScreenLogger(object):
     def warning(self, text):
         print("{}{}{}".format(Colors.YELLOW, text, Colors.END))
 
-    def error(self, text):
+    def error(self, text, crash=True):
         print("{}{}{}".format(Colors.RED, text, Colors.END))
+        if crash:
+            exit(1)
 
     def ask_input(self, title):
         return input("{}{}{}".format(Colors.BG_CYAN, title, Colors.END))

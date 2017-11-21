@@ -17,6 +17,7 @@
 import numpy as np
 from utils import *
 from configurations import Preset
+from renderer import Renderer
 
 
 class EnvironmentWrapper(object):
@@ -31,6 +32,7 @@ class EnvironmentWrapper(object):
         self.observation = []
         self.reward = 0
         self.done = False
+        self.default_action = 0
         self.last_action_idx = 0
         self.measurements = []
         self.action_space_low = 0
@@ -38,6 +40,7 @@ class EnvironmentWrapper(object):
         self.action_space_abs_range = 0
         self.discrete_controls = True
         self.action_space_size = 0
+        self.key_to_action = {}
         self.width = 1
         self.height = 1
         self.is_state_type_image = True
@@ -50,6 +53,11 @@ class EnvironmentWrapper(object):
         self.is_rendered = self.tp.visualization.render
         self.seed = self.tp.seed
         self.frame_skip = self.tp.env.frame_skip
+        self.human_control = self.tp.env.human_control
+        self.wait_for_explicit_human_action = False
+        self.is_rendered = self.is_rendered or self.human_control
+        self.game_is_open = True
+        self.renderer = Renderer()
 
     def _update_observation_and_measurements(self):
         # extract all the available measurments (ovservation, depthmap, lives, ammo etc.)
@@ -71,6 +79,18 @@ class EnvironmentWrapper(object):
         """
         return self.actions[action_idx]
 
+    def _action_to_idx(self, action):
+        """
+        Convert an environment action to one of the available actions of the wrapper.
+        For example, if the available actions are 4,5,6 then this function will map 4->0, 5->1, 6->2
+        :param action: the environment action
+        :return: an action index between 0 and self.action_space_size - 1, or -1 if the action does not exist
+        """
+        for key, val in self.actions.items():
+            if val == action:
+                return key
+        return -1
+
     def _preprocess_observation(self, observation):
         """
         Do initial observation preprocessing such as cropping, rgb2gray, rescale etc.
@@ -78,6 +98,31 @@ class EnvironmentWrapper(object):
         :return: the preprocessed observation
         """
         pass
+
+    def get_action_from_user(self):
+        """
+        Get an action from the user keyboard
+        :return: action index
+        """
+        if self.wait_for_explicit_human_action:
+            while len(self.renderer.pressed_keys) == 0:
+                self.renderer.get_events()
+
+        if self.key_to_action == {}:
+            # the keys are the numbers on the keyboard corresponding to the action index
+            if len(self.renderer.pressed_keys) > 0:
+                action_idx = self.renderer.pressed_keys[0] - ord("1")
+                if 0 <= action_idx < self.action_space_size:
+                    return action_idx
+        else:
+            # the keys are mapped through the environment to more intuitive keyboard keys
+            for key in self.renderer.pressed_keys:
+                for env_key in self.key_to_action.keys():
+                    if key in env_key:
+                        return self.key_to_action[env_key]
+                    
+        # return the default action 0 so that the environment will continue running
+        return self.default_action
 
     def step(self, action_idx):
         """
@@ -91,7 +136,7 @@ class EnvironmentWrapper(object):
         """
         Call the environment function for rendering to the screen
         """
-        pass
+        self.renderer.render_image(self.get_rendered_image())
 
     def reset(self, force_environment_reset=False):
         """

@@ -38,6 +38,12 @@ def json_to_preset(json_path):
         if run_dict['exploration_policy_type'] is not None:
             tuning_parameters.exploration = eval(run_dict['exploration_policy_type'])()
 
+    # human control
+    if run_dict['play']:
+        tuning_parameters.agent.type = 'HumanAgent'
+        tuning_parameters.env.human_control = True
+        tuning_parameters.num_heatup_steps = 0
+
     if run_dict['custom_parameter'] is not None:
         unstripped_key_value_pairs = [pair.split('=') for pair in run_dict['custom_parameter'].split(';')]
         stripped_key_value_pairs = [tuple([pair[0].strip(), ast.literal_eval(pair[1].strip())]) for pair in

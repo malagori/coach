@@ -61,7 +61,10 @@ class Agent(object):
             self.measurements_size = tuning_parameters.env.measurements_size = (self.measurements_size[0] + 1,)
 
         # modules
-        self.memory = eval(tuning_parameters.memory + '(tuning_parameters)')
+        if tuning_parameters.agent.load_memory_from_file_path:
+            self.memory = read_pickle(tuning_parameters.agent.load_memory_from_file_path)
+        else:
+            self.memory = eval(tuning_parameters.memory + '(tuning_parameters)')
         # self.architecture = eval(tuning_parameters.architecture)
 
         self.has_global = replicated_device is not None

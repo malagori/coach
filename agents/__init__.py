@@ -23,6 +23,7 @@ from agents.ddqn_agent import *
 from agents.dfp_agent import *
 from agents.dqn_agent import *
 from agents.categorical_dqn_agent import *
+from agents.human_agent import *
 from agents.mmc_agent import *
 from agents.n_step_q_agent import *
 from agents.naf_agent import *

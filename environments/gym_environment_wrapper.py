@@ -15,8 +15,10 @@
 #
 
 import sys
+from logger import *
 import gym
 import numpy as np
+import time
 try:
     import roboschool
     from OpenGL import GL
@@ -40,8 +42,6 @@ from gym import wrappers
 from utils import force_list, RunPhase
 from environments.environment_wrapper import EnvironmentWrapper
 
-i = 0
-
 
 class GymEnvironmentWrapper(EnvironmentWrapper):
     def __init__(self, tuning_parameters):
@@ -55,18 +55,12 @@ class GymEnvironmentWrapper(EnvironmentWrapper):
         # self.env_spec = gym.spec(self.env_id)
         self.discrete_controls = type(self.env.action_space) != gym.spaces.box.Box
 
-        # pybullet requires rendering before resetting the environment, but other gym environments (Pendulum) will crash
-        try:
-            if self.is_rendered:
-                self.render()
-        except:
-            pass
-
         o = self.reset(True)['observation']
 
         # render
         if self.is_rendered:
-            self.render()
+            image = self.get_rendered_image()
+            self.renderer.create_screen(image.shape[1], image.shape[0])
 
         self.is_state_type_image = len(o.shape) > 1
         if self.is_state_type_image:
@@ -75,7 +69,10 @@ class GymEnvironmentWrapper(EnvironmentWrapper):
         else:
             self.width = o.shape[0]
 
+        # action space
         self.actions_description = {}
+        if hasattr(self.env.unwrapped, 'get_action_meanings'):
+            self.actions_description = self.env.unwrapped.get_action_meanings()
         if self.discrete_controls:
             self.action_space_size = self.env.action_space.n
             self.action_space_abs_range = 0
@@ -85,6 +82,11 @@ class GymEnvironmentWrapper(EnvironmentWrapper):
             self.action_space_low = self.env.action_space.low
             self.action_space_abs_range = np.maximum(np.abs(self.action_space_low), np.abs(self.action_space_high))
         self.actions = {i: i for i in range(self.action_space_size)}
+        self.key_to_action = {}
+        if hasattr(self.env.unwrapped, 'get_keys_to_action'):
+            self.key_to_action = self.env.unwrapped.get_keys_to_action()
+
+        # measurements
         self.timestep_limit = self.env.spec.timestep_limit
         self.current_ale_lives = 0
         self.measurements_size = len(self.step(0)['info'].keys())
@@ -95,11 +97,7 @@ class GymEnvironmentWrapper(EnvironmentWrapper):
         self.done = False
         self.last_action = self.actions[0]
 
-    def render(self):
-        self.env.render()
-
     def step(self, action_idx):
-
         if action_idx is None:
             action_idx = self.last_action_idx
 
@@ -148,7 +146,8 @@ class GymEnvironmentWrapper(EnvironmentWrapper):
 
     def _restart_environment_episode(self, force_environment_reset=False):
         # prevent reset of environment if there are ale lives left
-        if "Breakout" in self.env_id and self.env.env.ale.lives() > 0 and not force_environment_reset:
+        if "Breakout" in self.env_id and self.env.env.ale.lives() > 0 \
+                and not force_environment_reset:
             return self.observation
 
         if self.seed:

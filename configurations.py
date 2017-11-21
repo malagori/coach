@@ -90,6 +90,7 @@ class AgentParameters(object):
     step_until_collecting_full_episodes = False
     targets_horizon = 'N-Step'
     replace_mse_with_huber_loss = False
+    load_memory_from_file_path = None
 
     # PPO related params
     target_kl_divergence = 0.01
@@ -132,6 +133,7 @@ class EnvironmentParameters(object):
     reward_scaling = 1.0
     reward_clipping_min = None
     reward_clipping_max = None
+    human_control = False
 
 
 class ExplorationParameters(object):
